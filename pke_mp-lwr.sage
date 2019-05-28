@@ -1,27 +1,29 @@
-# Public Key Encryption scheme based on Middle-Produc Learning with Roundings
+# Public Key Encryption scheme based on the hardness of the Middle-Produc Learning with Rounding problem
 
 '''
-UPDATE 30.04.2019 !! The work is still in progress !! It is not correctly implemented right now !! 
+UPDATE 28.05.2019 !! The work is still in progress !! It is not decrypting correctly, but the reconciliation mechanism and the inverting function are fixed now.
+
+UPDATE 30.04.2019 !! The work is still in progress !! It is not correctly implemented right now.
 
 This is a sage program realizing the Public Key Encryption (PKE) scheme from Bai et al. [BBDRLWZ19].
-The PKE scheme is chosen to be IND-CPA secure under the Middle-Product Computational Learning With Roundings (MP-CLWR) problem using appropriate parameters.
+The PKE scheme is chosen to be IND-CPA secure under the Middle-Product Computational Learning With Rounding (MP-CLWR) problem using appropriate parameters.
 
 The code consists of the following functions:
 
 *setparams*
-This function takes as input the security parameter <sec_lambda> and computes the parameters of the PKE scheme corresponding to the examples parameters given by the authors of [BBDRLWZ19] in Section %TODO.
+This function takes as input the security parameter <sec_lambda> and computes the parameters of the PKE scheme corresponding to the examples parameters given by the authors of [BBDRLWZ19] in Section 6.
 
 *keygen*
-This function computes a public key for the PKE scheme corresponding to the security parameter <sec_lambda>.
+This function computes a pair of secret and public key for the PKE scheme corresponding to the security parameter <sec_lambda>.
 
 *encrypt*
-This function takes as input the security parameter <sec_lambda> and computes the ciphertext <(c_1,c_2)> for the message <m> under the public key <pk>.
+This function takes as input the security parameter <sec_lambda> and computes the ciphertext <c=(c_1,c_2,c_3)> for the message <m> under the public key <pk>.
 
 *decrypt*
-This function takes as input the security parameter <sec_lambda> and decrypts the ciphertext <c> given the secret key <sk>.
+This function takes as input the security parameter <sec_lambda> and decrypts the ciphertext <c=(c_1,c_2,c_3)> given the secret key <sk>.
 
 References:
-[BBDRLW19] Shi Bai, Katharina Boudgoust, Dipayan Das, Adeline Roux-Langlois, Weiqianq Wen and Zhenfei Zhang - Middle-Product Learning With Roundings - https://eprint.iacr.org/2019/TODO
+[BBDRLW19] Shi Bai, Katharina Boudgoust, Dipayan Das, Adeline Roux-Langlois, Weiqianq Wen and Zhenfei Zhang - Middle-Product Learning with Rounding Problem and its Applications - https://eprint.iacr.org/2019/TODO
 '''
 
 import random
@@ -31,11 +33,11 @@ load("tools.sage")
 # FUNCTION SETPARAMS
 ''' 	INPUT:	- <sec_lambda> : security parameter for the PKE scheme
 	OUTPUT: - <n> : the dimension, should be even
-		- <q> : the modulus
+		- <q> : the modulus, should be prime
 		- <p> : the rounding modulus
 		- <t> : the number of MP-LWE samples
-		- <Z> : the quotient ring Z/qZ
-		- <P> : the polynomial ring over <Z> in the variable <x>
+		- <Z> : the quotient ring <Z/qZ>
+		- <P> : the polynomial ring over <Z/pZ> in the variable <x>
 		- <x> : the variable of <P>
 '''
 @cached_function
@@ -44,9 +46,14 @@ def setparams(sec_lambda):
 		n=sec_lambda
 	else: 
 		n=sec_lambda+1
-	q=next_prime(round(n^3*log(n)^(1/2)))
-	t=round(log(n))
-	p=round(n*log(n))
+	# constant from examples parameters in [BBDRLWZ19] c=0.001
+	# q=next_prime(round2(n^4.001*log(n,2)^(2)))
+	t=round2(log(n,2))
+	# first condidition: asymptotic, second condition: correctness condition
+	# p=max(round2(n*log(n,2)),8*t*(n/2+1))
+	# for tests let's use smaller parameter
+	p = 8*t*(n/2+1)
+	q = next_prime(p*n*log(n,2))
 	Z=ZZ.quotient(q) 
 	P=PolynomialRing(Z,'x')
 	x=P.gen()
@@ -56,19 +63,19 @@ def setparams(sec_lambda):
 ''' 	INPUT:	- <sec_lambda> : security parameter for the PKE scheme
 	OUTPUT: - the secret key <sk> and the public key <pk> of the PKE scheme 
 '''
-def keygenmp(sec_lambda):
+def keygen(sec_lambda):
 	# initialize the parameters
 	(n,q,t,p,Z,P,x)=setparams(sec_lambda)
 	# initialize the public key
 	pk=[]
-	#sample private key having a hankel matrix of full rank n, here d=k=n/2
+	# sample secret key having a hankel matrix of full rank n, here d=k=n/2
 	s=P.random_element(2*n-2)
-	while check_hankel_matrix(s,n,n) == False:
+	while check_hankel_matrix(s,n,n) == False: #makes it slower than keygen() in MP-LWE-based scheme!
 		s=P.random_element(2*n-2)
     	sk=s
 
     	for i in range(t):
-        	#choose random first part of public key a
+        	# choose random first part of public key a
 		a=P.random_element(n-1)
       		# calculate mp of a and s
         	m=middleproduct(a,s,n,n-1,q)
@@ -80,22 +87,23 @@ def keygenmp(sec_lambda):
 # FUNCTION ENCRYPT
 ''' 	INPUT:	- public key <pk> of the form <(a_i,b_i)_{i \leq t}> and 
 		- message <m> a list of <n/2> binary entries
-	OUTPUT: - ciphertext <c_1,c_2,c_3> corresponding to the public key <pk> and the message <m>
+		- security parameter <sec_lambda> to compute the corresponding parameter set
+	OUTPUT: - ciphertext <c=(c_1,c_2,c_3)> corresponding to the public key <pk> and the message <m>
 '''
 def encrypt(pk,m,sec_lambda):
 	# initialize the parameters
         (n,q,t,p,Z,P,x)=setparams(sec_lambda)
-	#put initial value of c_1 (first ciphertext part) and c_1 and v (for the second ciphertext part)
+	# put initial value of c_1 (first ciphertext part) and c_2 and v (for the second ciphertext part)
 	c_1=0
 	c_2=0
 	v=0
 	for i in range(t):
-		#choose random binary r
+		# choose random binary r
 		list_r=[ZZ.random_element(0,2) for j in range(n/2+1)]
 		r=polynomial_from_list(list_r,q)	
 		c_1=c_1+r*pk[i][0]
 		v=v+middleproduct(r,inverting(pk[i][1],p,q),n/2,n/2,q)
-	#for q even
+	# for q even
 	if q%2==0:
 		c_2=cross_rounding(v,q)[0]	
 		k="".join(map(str,rounding(v,2,q)[0]))
@@ -110,7 +118,7 @@ def encrypt(pk,m,sec_lambda):
 		c_3=xor(m1,k1)	
 		print("This is the xor of the massage with the hash value ",c_3)
 		c_3=[int(c_3[i],2) for i in range(len(c_3))] 
-	#for q odd we need the use of the randomized doubling function <dbl>
+	# for q odd we need the use of the randomized doubling function <dbl>
 	else:
 		list_v=[int(x) for x in v.list()]
 		c_2=cross_rounding(dbl(list_v,q),2*q)[0]
