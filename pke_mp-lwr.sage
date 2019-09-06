@@ -23,7 +23,7 @@ This function takes as input the security parameter <sec_lambda> and computes th
 This function takes as input the security parameter <sec_lambda> and decrypts the ciphertext <c=(c_1,c_2,c_3)> given the secret key <sk>.
 
 References:
-[BBDRLW19] Shi Bai, Katharina Boudgoust, Dipayan Das, Adeline Roux-Langlois, Weiqianq Wen and Zhenfei Zhang - Middle-Product Learning with Rounding Problem and its Applications - https://eprint.iacr.org/2019/1001
+[BBD+19] Shi Bai, Katharina Boudgoust, Dipayan Das, Adeline Roux-Langlois, Weiqianq Wen and Zhenfei Zhang - Middle-Product Learning with Rounding Problem and its Applications - https://eprint.iacr.org/2019/1001
 '''
 
 import random
