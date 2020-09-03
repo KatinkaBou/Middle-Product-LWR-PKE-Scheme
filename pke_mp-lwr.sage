@@ -1,5 +1,14 @@
-# Public Key Encryption scheme based on the hardness of the Middle-Produc Learning with Rounding problem
-
+# -*- coding: utf-8 -*-
+"""
+    Created on 09/03/2020
+    Last Modification 09/03/2020
+    
+    @creator: Katharina BOUDGOUST
+    
+    ###############################################################################
+    #   PKE scheme based on the hardness of Middle-Produc Learning with Rounding  #
+    ###############################################################################
+    """
 '''
 UPDATE 28.05.2019 !! The work is still in progress !! It is not decrypting correctly, but the reconciliation mechanism and the inverting function are fixed now.
 
