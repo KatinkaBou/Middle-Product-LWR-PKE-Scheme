@@ -1,4 +1,15 @@
-# Tools for the implemention of the Public Key Encryption scheme based on the hardness of the Middle-Produc Learning with Roundings problem
+# -*- coding: utf-8 -*-
+"""
+    Created on 09/03/2020
+    Last Modification 09/03/2020
+    
+    @creator: Katharina BOUDGOUST
+    
+    ####################
+    #   Needed Tools   #
+    ####################
+
+"""
 
 '''
 This sage program includes all necessary tools in order to implement the Public Key Encryption (PKE) scheme from Bai et al. [BBDRLWZ19].
